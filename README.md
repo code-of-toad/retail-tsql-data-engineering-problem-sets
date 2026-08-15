@@ -1,4 +1,4 @@
-# Retail SQL for Data Engineering
+# Retail T-SQL Data Engineering Problem Sets
 
 Hands-on Microsoft T-SQL practice for mastering SQL in realistic retail data-engineering workflows: querying, data quality, ETL, incremental processing, dimensional modeling, reliability, and performance.
 
@@ -18,23 +18,51 @@ The practice data includes both:
 ## Repository Structure
 
 ```text
-.
-├── README.md
-├── .gitignore
+retail-tsql-data-engineering-problem-sets/
 ├── docs/
-│   └── EDGE_CASE_COVERAGE.md
-├── problem_sets/
+│   ├── EDGE_CASE_COVERAGE.md
 │   └── retail_tsql_data_engineering_problem_sets.md
 ├── sql/
-│   └── 00_setup/
-│       ├── retail_tsql_practice_setup.sql
-│       └── retail_tsql_seed_validation.sql
-└── solutions/
-    ├── day01/
-    ├── day02/
-    ├── day03/
-    └── final_mock/
+│   ├── 00_setup/
+│   │   ├── retail_tsql_practice_setup.sql
+│   │   └── retail_tsql_seed_validation.sql
+│   ├── 01_core_querying_and_joins/
+│   │   ├── day01_problem_set_SOLUTIONS.sql
+│   │   └── day01_problem_set_starter.sql
+│   └── 02_critical_data_engineering_sql/
+├── .gitignore
+├── LICENSE
+└── README.md
 ```
+
+## Repository Organization
+
+### `docs/`
+
+Contains the master curriculum and documentation describing the deterministic edge cases built into the practice data.
+
+- `retail_tsql_data_engineering_problem_sets.md` — the complete three-day SQL problem bank.
+- `EDGE_CASE_COVERAGE.md` — documents the seeded cases used to support data-quality, deduplication, replay, late-arriving-data, and other engineering exercises.
+
+### `sql/00_setup/`
+
+Contains the scripts required to create and validate the practice environment.
+
+- `retail_tsql_practice_setup.sql` — drops/recreates `RetailDEPractice`, creates the schemas and tables, and loads the clean and deliberately dirty seed data.
+- `retail_tsql_seed_validation.sql` — verifies that the required deterministic edge cases are actually present.
+
+### `sql/01_core_querying_and_joins/`
+
+Contains the Day 1 executable practice material.
+
+- `day01_problem_set_starter.sql` — starter file for writing and testing your own solutions.
+- `day01_problem_set_SOLUTIONS.sql` — reference solutions for the exact same Day 1 problems.
+
+### `sql/02_critical_data_engineering_sql/`
+
+Reserved for the Day 2 executable problem set and solution files covering critical data-engineering SQL.
+
+Additional numbered SQL directories can be added as later phases are converted into executable starter and solution files.
 
 ## Core Operational Model
 
@@ -112,7 +140,7 @@ Incoming tables are intentionally permissive and mostly text-typed so malformed 
 
 ## Getting Started
 
-1. Connect to a SQL Server instance.
+1. Connect to a Microsoft SQL Server instance.
 2. Run:
 
    ```text
@@ -125,19 +153,29 @@ Incoming tables are intentionally permissive and mostly text-typed so malformed 
    sql/00_setup/retail_tsql_seed_validation.sql
    ```
 
-4. Do not begin the problem set until the validation script prints:
+4. Do not begin the exercises until the validation script prints:
 
    ```text
    ALL SEED VALIDATION CHECKS PASSED
    ```
 
-5. Work through:
+5. Review the master curriculum:
 
    ```text
-   problem_sets/retail_tsql_data_engineering_problem_sets.md
+   docs/retail_tsql_data_engineering_problem_sets.md
    ```
 
-6. Save your answers under `solutions/`.
+6. Begin Day 1 in:
+
+   ```text
+   sql/01_core_querying_and_joins/day01_problem_set_starter.sql
+   ```
+
+7. Write and execute your own answers in the starter file. Use the companion solution file only after attempting a problem yourself:
+
+   ```text
+   sql/01_core_querying_and_joins/day01_problem_set_SOLUTIONS.sql
+   ```
 
 ## Important Design Choice
 
