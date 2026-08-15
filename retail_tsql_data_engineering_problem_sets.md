@@ -1,705 +1,627 @@
-# Retail T-SQL Data Engineering — 3-Day Comprehensive Problem Sets
+# Retail T-SQL Data Engineering — Comprehensive 3-Day Problem Set
 
 **Dialect:** Microsoft T-SQL for SQL Server  
-**Context:** Retail  
-**Solutions:** Intentionally omitted.
+**Database:** `RetailDEPractice`  
+**Solutions:** intentionally omitted.
 
-## Practice schema
+Run the setup and seed-validation scripts before beginning.
 
-Assume these schemas and tables exist:
+---
 
-### `retail.customers`
-- `customer_id INT` — primary key
-- `customer_name NVARCHAR(100)`
-- `email NVARCHAR(255)` — nullable
-- `province CHAR(2)`
-- `signup_date DATE`
-- `loyalty_tier NVARCHAR(20)` — nullable
+# Working Rules
 
-### `retail.stores`
-- `store_id INT` — primary key
-- `store_name NVARCHAR(100)`
-- `city NVARCHAR(100)`
-- `province CHAR(2)`
-- `opened_date DATE`
+For every coding problem:
 
-### `retail.products`
-- `product_id INT` — primary key
-- `sku NVARCHAR(30)` — unique
-- `product_name NVARCHAR(150)`
-- `category NVARCHAR(50)`
-- `unit_cost DECIMAL(10,2)`
-- `list_price DECIMAL(10,2)`
-- `active_flag BIT`
-
-### `retail.orders`
-- `order_id INT` — primary key
-- `customer_id INT` — nullable foreign key to `customers`
-- `store_id INT` — foreign key to `stores`
-- `order_date DATETIME2`
-- `status NVARCHAR(20)`
-- `sales_channel NVARCHAR(20)`
-- `last_modified DATETIME2`
-
-### `retail.order_items`
-- `order_id INT`
-- `line_number INT`
-- `product_id INT`
-- `quantity INT`
-- `unit_price DECIMAL(10,2)`
-- `discount_amount DECIMAL(10,2)`
-- primary key: `(order_id, line_number)`
-
-### `retail.inventory_snapshots`
-- `store_id INT`
-- `product_id INT`
-- `snapshot_date DATE`
-- `on_hand_qty INT`
-- `reorder_point INT`
-- primary key: `(store_id, product_id, snapshot_date)`
-
-### `staging.orders_incoming`
-Deliberately contains duplicates and invalid rows:
-- `ingestion_id INT IDENTITY`
-- `source_order_id INT`
-- `customer_id INT NULL`
-- `store_id INT`
-- `order_date DATETIME2 NULL`
-- `status NVARCHAR(20)`
-- `sales_channel NVARCHAR(20)`
-- `modified_at DATETIME2`
-- `ingested_at DATETIME2`
-- `source_file NVARCHAR(255)`
+1. Write executable T-SQL.
+2. State the **output grain** in a comment.
+3. Do not use `SELECT *` unless specifically asked.
+4. Where raw source values are involved, use safe conversion patterns such as `TRY_CONVERT`.
+5. Do not disable clean-table constraints to manufacture errors.
+6. When a join could multiply rows, explain why your aggregation is safe.
 
 ---
 
 # DAY 1 — Core Querying + Joins
 
-## Set 1A — SELECT, WHERE, ORDER BY
+## A. SELECT / WHERE / ORDER BY
 
-1. Return every active product.
-2. Return `product_id`, `product_name`, and `list_price` for products costing more than $100.
-3. Return the 10 most expensive products by `list_price`.
-4. Return all orders placed through the `Online` sales channel.
-5. Return all completed orders placed on or after `2026-01-01`.
-6. Return all customers in Ontario (`ON`) or British Columbia (`BC`).
-7. Return products whose category is not `Electronics`.
-8. Return orders whose status is either `Completed`, `Shipped`, or `Processing`.
-9. Return all products priced between $25 and $100 inclusive.
-10. Return customers sorted by `signup_date` newest first, then `customer_name` alphabetically.
+1. Return active products with `product_id`, `sku`, `product_name`, `category`, and `list_price`.
+2. Return products priced above $100.
+3. Return the 10 most expensive products.
+4. Return completed online orders.
+5. Return completed orders on or after `2026-04-01`.
+6. Return customers in Ontario or British Columbia.
+7. Return products outside the `Electronics` category.
+8. Return orders with status `Completed`, `Shipped`, or `Processing`.
+9. Return products priced between $25 and $100 inclusive.
+10. Return customers newest signup first, then alphabetically.
+11. Return inactive products.
+12. Return orders before noon.
+13. Return the five earliest orders.
+14. Return distinct customer provinces.
+15. Return orders that are not completed.
 
-## Set 1B — Aggregation
+## B. Aggregates / GROUP BY / HAVING
 
-11. Count all rows in `retail.orders`.
-12. Count how many orders have a non-null `customer_id`.
-13. Count distinct customers who have placed at least one order.
-14. Calculate total quantity sold across all order-item rows.
-15. Calculate gross item revenue before discounts as `quantity * unit_price`.
-16. Calculate total discount amount across all order-item rows.
-17. Calculate net item revenue as `(quantity * unit_price) - discount_amount`.
-18. Calculate average product `list_price`.
-19. Return the minimum and maximum `unit_cost` in `retail.products`.
-20. Return total net revenue by `product_id`.
-21. Return total net revenue by `order_id`.
-22. Return order count by `status`.
-23. Return order count by `sales_channel`.
-24. Return product count by `category`.
-25. Return categories with at least 3 products.
-26. Return stores with more than 3 completed orders.
-27. Return customers whose lifetime net sales exceed $500.
-28. Return average order value, defined as total net sales divided by distinct completed orders.
+16. Count all orders.
+17. Count orders with a non-NULL customer.
+18. Count distinct customers who placed an order.
+19. Sum quantity across all order-item rows.
+20. Calculate gross line sales: `quantity * unit_price`.
+21. Calculate total discounts.
+22. Calculate total net line sales.
+23. Find average list price.
+24. Find minimum and maximum product costs.
+25. Return product count by category.
+26. Return order count by status.
+27. Return order count by sales channel.
+28. Return total units sold by product.
+29. Return total net sales by order.
+30. Return total net sales by product.
+31. Return categories containing at least four products.
+32. Return customers with at least two orders.
+33. Return stores with at least four completed orders.
+34. Return customers whose completed lifetime net sales exceed $300.
+35. Calculate average completed order value using distinct orders.
 
-## Set 1C — CASE and NULL handling
+## C. CASE / NULL
 
-29. Label each product:
-   - `Budget` if `list_price < 25`
-   - `Midrange` if `25 <= list_price < 100`
-   - `Premium` otherwise.
-30. Create a `stock_status` for inventory rows:
-   - `Out of Stock` if `on_hand_qty = 0`
-   - `Low Stock` if `on_hand_qty <= reorder_point`
-   - `Healthy` otherwise.
-31. Return customers with `email`; replace NULL email values with `NO_EMAIL`.
-32. Return customers with `loyalty_tier`; replace NULL tiers with `Unassigned`.
-33. Calculate each order item's effective selling price after its discount.
-34. Create a flag showing whether an order has a known customer (`Known`) or is a guest order (`Guest`).
-35. Count guest orders and known-customer orders in a single grouped query.
-36. Use conditional aggregation to return, per store:
-   - completed order count
-   - cancelled order count
-   - all other order count.
-37. Return net sales by category and separately calculate net sales from discounted lines only.
-38. Return the percentage of order-item rows that have a positive discount.
+36. Classify products as `Budget`, `Midrange`, or `Premium`.
+37. Classify inventory rows as `Out of Stock`, `Low Stock`, or `Healthy`.
+38. Replace NULL email with `NO_EMAIL`.
+39. Replace NULL loyalty tier with `Unassigned`.
+40. Label guest versus known-customer orders.
+41. Count guest and known-customer orders.
+42. Return completed/cancelled/other order counts per store with conditional aggregation.
+43. Calculate discounted-line revenue separately from non-discounted-line revenue.
+44. Return percentage of clean order-item rows carrying a discount.
+45. Calculate gross margin per clean order line as net sales minus product cost.
 
-## Set 1D — INNER JOIN / LEFT JOIN
+## D. INNER JOIN / LEFT JOIN
 
-39. Return each order with its store name.
-40. Return each order with customer name where a customer exists.
-41. Return all orders, including guest orders, with customer name if available.
-42. Return order line detail with:
-   - order ID
-   - order date
-   - product name
-   - quantity
-   - unit price
-   - discount
-   - net line revenue.
-43. Return completed net sales by store.
-44. Return completed net sales by province.
-45. Return completed net sales by product category.
-46. Return completed net sales by customer.
-47. Return every customer and their total completed net sales, including customers with no purchases.
-48. Return every product and its total units sold, including products that have never sold.
-49. Find products that have never appeared in `order_items`.
-50. Find customers who have never placed an order.
-51. Return each store's latest inventory snapshot date.
-52. Return all products that were low-stock at any store on the most recent snapshot date for that store.
+46. Return each order with its store name.
+47. Return each known-customer order with customer name.
+48. Return all orders, including guest orders, with customer name if present.
+49. Return full order-line detail with product name and net line revenue.
+50. Return completed net sales by store.
+51. Return completed net sales by store province.
+52. Return completed net sales by product category.
+53. Return completed net sales by customer.
+54. Return every customer and completed lifetime sales, including zero-sales customers.
+55. Return every product and total units sold, including never-sold products.
+56. Find products never sold.
+57. Find customers who never placed an order.
+58. Return each store's latest inventory snapshot date.
+59. Return low-stock SKUs on the latest available snapshot **for each store**.
+60. Return products bought by each customer.
+61. Return completed sales by customer province.
+62. Return gross margin by product category.
 
-## Set 1E — Join cardinality and duplicate explosions
+## E. Join Cardinality / Duplicate Explosions
 
-For each question, first predict the output grain before writing SQL.
+63. Predict and then verify the grain after joining `orders` to `order_items`.
+64. Predict and verify the grain after joining `orders → order_items → products`.
+65. Explain why `COUNT(*)` after joining orders to items is not an order count.
+66. Correctly count distinct completed orders by store after joining to items.
+67. Compute completed store revenue without double-counting.
+68. Write an intentionally wrong query that overcounts orders due to the order-item join; then fix it.
+69. Show the number of line rows produced per order after joining.
+70. Identify the order(s) with the largest number of lines.
+71. Pre-aggregate order-item revenue to one row per order, then join to `orders`.
+72. Pre-aggregate inventory to one row per store and join it to a store-level sales aggregation without causing multiplication.
+73. Explain why joining two one-to-many child tables directly through a common parent can create a multiplicative explosion.
 
-53. Join `orders` to `order_items`. What does one result row represent?
-54. Join `orders` → `order_items` → `products`. What does one result row represent?
-55. Explain why `COUNT(*)` after joining `orders` to `order_items` does **not** equal order count.
-56. Write a query that correctly counts distinct orders by store after joining to `order_items`.
-57. Write a query that computes total store revenue without double-counting.
-58. Create an intentionally incorrect query that double-counts order-level rows because of a one-to-many join. Then rewrite it correctly.
-59. Suppose one order has 4 items. After joining `orders` to `order_items`, how many rows represent that order?
-60. Suppose you join `orders` to both `order_items` and a hypothetical `order_payments` table with 2 payment rows for the same order. If the order has 4 items, how many rows could result? Explain the multiplication.
-61. Write a strategy using pre-aggregation to avoid the multiplication problem in Question 60.
+## F. UNION ALL
 
-## Set 1F — UNION ALL
+74. Combine customer provinces and store provinces with `UNION ALL`.
+75. Produce `(entity_type, entity_id, province)` for both customers and stores.
+76. Compare `UNION` and `UNION ALL` by executing both against province lists.
+77. Combine completed and cancelled orders into one labeled result.
+78. Build a data-quality summary containing multiple check names and counts using `UNION ALL`.
 
-62. Return a single list of all store provinces and customer provinces using `UNION ALL`.
-63. Produce one result containing:
-   - `entity_type`
-   - `entity_id`
-   - `province`
+## G. Date Functions
 
-   for both customers and stores.
-64. Explain the difference between `UNION` and `UNION ALL`.
-65. Rewrite a `UNION` query as `UNION ALL` where retaining duplicates is logically correct.
-66. Combine completed and cancelled orders into one result using two queries and `UNION ALL`, adding a text column that identifies which branch each row came from.
+79. Extract year, month, and day from order dates.
+80. Return order count by calendar year/month.
+81. Using `@as_of_date = '2026-08-15'`, return orders from the preceding 30 days.
+82. Return days between signup and first order for every customer who ordered.
+83. Return month-end for each order using `EOMONTH`.
+84. Return inventory snapshots in June 2026.
+85. Return completed sales by quarter.
+86. Return completed sales by month.
+87. Return the first and last order date for each customer.
+88. Return customers whose second order occurred within 30 days of their first.
 
-## Set 1G — Basic date functions
+## H. String Functions
 
-67. Return the calendar year, month, and day of each order.
-68. Return order count by year and month.
-69. Return orders from the last 30 days relative to a supplied variable `@as_of_date`.
-70. Return the number of days between customer signup and their first order.
-71. Return each order's month-end date using `EOMONTH`.
-72. Return inventory snapshots taken during the same calendar month as a supplied date.
-73. Return completed sales by calendar quarter.
-74. Return products sold in the 7-day period beginning with each order date—then explain why the wording is logically odd and restate the requirement correctly.
-
-## Set 1H — Basic string functions
-
-75. Return customer names in uppercase.
-76. Trim whitespace from customer emails.
-77. Extract the first 3 characters from every product SKU.
-78. Build a display label in the form `SKU - Product Name`.
-79. Return the length of each product name.
-80. Replace spaces in product names with hyphens.
-81. Find products whose names contain the word `Wireless`.
-82. Produce one comma-separated product-name list per category using `STRING_AGG`.
+89. Uppercase customer names.
+90. Trim incoming customer emails.
+91. Return first three characters of every SKU.
+92. Build `SKU - Product Name`.
+93. Return product-name lengths.
+94. Replace spaces in product names with hyphens.
+95. Find products whose names contain `Wireless`.
+96. Create one comma-separated product list per category using `STRING_AGG`.
 
 ## Day 1 Capstone
 
-83. Produce one row per store with:
-- store ID
-- store name
-- province
+97. Produce **one row per store** containing:
+- store ID/name/province
 - distinct completed order count
 - distinct completed customer count
 - units sold
 - gross sales
 - discount amount
 - net sales
-- gross margin, where line cost = `quantity * unit_cost`
+- gross margin
 - average order value
 - latest inventory snapshot date
-- count of low-stock SKUs on that latest snapshot.
+- count of low-stock SKUs on that store's latest snapshot
 
-You must prevent join multiplication.
+You must prevent sales/inventory join multiplication.
 
 ---
 
-# DAY 2 — Critical Data Engineering SQL
+# DAY 2 — Critical Data-Engineering SQL
 
-## Set 2A — CTEs
+## I. CTEs
 
-84. Rewrite Question 83 using at least three CTEs.
-85. Create a CTE called `completed_sales` containing completed order-line detail and query total sales by province from it.
-86. Create separate CTEs for:
-   - order totals
-   - customer lifetime totals
+98. Rewrite the Day 1 capstone with separate sales and inventory CTEs.
+99. Build a `completed_sales` CTE and aggregate it by province.
+100. Build chained CTEs named `raw_lines`, `clean_lines`, `enriched_lines`, and `aggregated_sales`.
+101. Use a CTE to find never-sold products.
+102. Use two CTEs to calculate store monthly sales and company monthly sales, then contribution percentage.
+103. Use a CTE to calculate customer lifetime sales and rank customers.
+104. Refactor one nested subquery into multiple CTEs.
 
-   and return customers ranked by lifetime sales.
-87. Use chained CTEs representing:
-   - `raw_lines`
-   - `clean_lines`
-   - `enriched_lines`
-   - `aggregated_sales`.
-88. Write a CTE that identifies products with no sales.
-89. Write a CTE that calculates monthly store sales, then a second CTE that calculates company-wide monthly sales, and return each store's percentage contribution.
-90. Refactor a deeply nested subquery of your own design into CTEs and explain which version is easier to maintain.
+## J. Subqueries
 
-## Set 2B — Subqueries
+105. Products priced above average list price.
+106. Orders whose net value exceeds average completed order value.
+107. Customers whose lifetime sales exceed average customer lifetime sales.
+108. Stores whose sales exceed average store sales.
+109. Return each customer's first order using a subquery.
+110. Return each product with total quantity sold using a correlated subquery.
+111. Rewrite Question 110 with a join/CTE and compare.
+112. Return products with completed revenue above their category average.
 
-91. Return products priced above the average product price.
-92. Return orders whose net value exceeds the average order value.
-93. Return customers whose lifetime sales exceed the average customer lifetime sales.
-94. Return the highest-revenue product in each category using a subquery-based approach.
-95. Return stores whose completed sales exceed the average completed sales across stores.
-96. Write a correlated subquery that returns each product with its total quantity sold.
-97. Replace Question 96 with a join or CTE and compare readability.
-98. Find each customer's first order using a subquery.
+## K. EXISTS / NOT EXISTS
 
-## Set 2C — EXISTS / NOT EXISTS
+113. Customers with at least one order.
+114. Customers with no orders.
+115. Products sold at least once.
+116. Products never sold.
+117. Stores whose latest snapshot has at least one low-stock product.
+118. Orders with at least one discounted line.
+119. Customers who bought Electronics.
+120. Customers who never bought Electronics.
+121. Incoming orders with valid numeric customer IDs that do not exist in `retail.customers`.
+122. Incoming order items with valid numeric product IDs that do not exist in `retail.products`.
 
-99. Return customers who have placed at least one order.
-100. Return customers with no orders using `NOT EXISTS`.
-101. Return products that have sold at least once.
-102. Return products that have never sold.
-103. Return stores that currently have at least one low-stock product.
-104. Return orders containing at least one discounted line.
-105. Return customers who have bought at least one product from the `Electronics` category.
-106. Return customers who have never bought an `Electronics` product.
-107. Identify `order_items` whose `order_id` does not correspond to an order. Assume constraints are temporarily disabled for this exercise.
-108. Identify `order_items` whose `product_id` does not correspond to a product.
+## L. Window Functions — ROW_NUMBER / RANK / DENSE_RANK
 
-## Set 2D — Window functions: ROW_NUMBER / RANK
+123. Number each customer's orders chronologically.
+124. Return each customer's most recent order.
+125. Return each customer's first order.
+126. Rank products by completed net sales.
+127. Rank products by completed net sales within category.
+128. Return top 3 products by revenue within each category.
+129. Demonstrate `ROW_NUMBER`, `RANK`, and `DENSE_RANK` on the Accessories category. Your output must expose the seeded tie.
+130. Rank stores by revenue within province.
+131. Return the second-highest revenue product per category.
+132. Return latest inventory snapshot per store/product.
+133. Return the top-selling order line within each completed order.
 
-109. Number orders chronologically within each customer using `ROW_NUMBER`.
-110. Return each customer's most recent order using `ROW_NUMBER`.
-111. Return each customer's first order using `ROW_NUMBER`.
-112. Rank products by completed net sales from highest to lowest.
-113. Rank products by completed net sales within category.
-114. Return the top 3 products by completed net sales within each category.
-115. Demonstrate the difference among `ROW_NUMBER`, `RANK`, and `DENSE_RANK` on product sales.
-116. Rank stores by completed net sales within province.
-117. Return the second-highest revenue product within every category.
-118. For each store and product, return the most recent inventory snapshot.
+## M. LAG / LEAD
 
-## Set 2E — LAG / LEAD
+134. Previous order date per customer.
+135. Days since previous order.
+136. Previous on-hand quantity per store/product.
+137. Inventory change since previous snapshot.
+138. Flag inventory decreases.
+139. Next order date per customer.
+140. Flag whether a customer returned within 30 days.
+141. Compare each month's completed sales with the prior month.
 
-119. Return each customer order and the date of their previous order.
-120. Calculate days since previous order for every customer.
-121. Return each inventory snapshot with the previous `on_hand_qty` for the same store/product.
-122. Calculate inventory quantity change from the previous snapshot.
-123. Flag inventory rows where stock decreased relative to the prior snapshot.
-124. Return each order and the customer's next order date.
-125. Determine whether a customer returned within 30 days after each order.
+## N. Windowed Aggregates
 
-## Set 2F — Windowed SUM
+142. Running completed net sales by date.
+143. Running completed net sales by store.
+144. Product percentage of category revenue.
+145. Store percentage of company revenue.
+146. Cumulative units sold per product over time.
+147. Three-row moving average of daily completed sales.
+148. Running order count by customer.
 
-126. Calculate running completed net sales by date.
-127. Calculate running completed net sales separately by store.
-128. Calculate each product's percentage of category revenue using a windowed `SUM`.
-129. Calculate each store's percentage of company revenue using a window function.
-130. Calculate cumulative units sold by product over time.
-131. Calculate a 3-row moving average of daily sales.
+## O. Safe Type Conversion / Raw Source Inspection
 
-## Set 2G — Deduplication
+149. Return incoming orders with safely converted integer order/customer/store IDs.
+150. Return incoming orders where order ID cannot be converted to `INT`.
+151. Return incoming order dates that cannot be converted to `DATETIME2`.
+152. Return malformed incoming item quantities.
+153. Return malformed incoming item unit prices.
+154. Convert valid incoming product cost/price strings to decimals.
+155. Explain why `CAST` is dangerous for a mixed-validity raw batch and demonstrate the safer alternative.
 
-Assume `staging.orders_incoming` may contain multiple versions of the same `source_order_id`.
+## P. Deduplication
 
-132. Show every duplicate `source_order_id`.
-133. Return the number of incoming versions per `source_order_id`.
-134. Keep only the most recently modified version of each source order using `ROW_NUMBER`.
-135. If two rows share the same `modified_at`, break ties using newest `ingested_at`.
-136. If those are also tied, use highest `ingestion_id`.
-137. Return only superseded duplicate records instead of the winners.
-138. Create a query that distinguishes:
-   - unique records
-   - winning duplicate versions
-   - superseded duplicate versions.
-139. Explain why `SELECT DISTINCT` is not an adequate general deduplication strategy for versioned records.
-140. Insert only the deduplicated winning records into a clean staging table.
+156. Show duplicate incoming `source_order_id_raw` values.
+157. Count versions per source order.
+158. Deduplicate orders by:
+   1. valid business key,
+   2. newest converted `modified_at`,
+   3. newest `ingested_at`,
+   4. highest `ingestion_id`.
+159. Return only winning records.
+160. Return only superseded records.
+161. Label each row as `UNIQUE`, `WINNER`, or `SUPERSEDED`.
+162. Show the seeded `modified_at` tie and prove your tie-break is deterministic.
+163. Deduplicate incoming order items by `(source_order_id, line_number)`.
+164. Deduplicate incoming inventory by `(store_id, product_id, snapshot_date)`.
+165. Explain why `DISTINCT` is insufficient for versioned-source deduplication.
 
-## Set 2H — Data-quality checks
+## Q. Duplicate File / Replay Detection
 
-Write one query per rule.
+166. Find duplicate source files by `(source_entity, file_checksum)`.
+167. Identify replayed order batches.
+168. Return all order rows belonging to a replayed checksum.
+169. Design a query that chooses only the earliest accepted batch for a checksum.
+170. Explain how checksum-level idempotency differs from business-key deduplication.
 
-141. Detect NULL `source_order_id`.
-142. Detect NULL `order_date`.
-143. Detect invalid order statuses outside the approved domain.
-144. Detect stores that do not exist in `retail.stores`.
-145. Detect customers that do not exist in `retail.customers`, excluding guest orders where customer is NULL.
-146. Detect future-dated orders relative to `@as_of_date`.
-147. Detect products where `unit_cost < 0`.
-148. Detect products where `list_price < 0`.
-149. Detect product rows where `unit_cost > list_price`.
-150. Detect order-item rows where `quantity <= 0`.
-151. Detect order-item rows where `discount_amount < 0`.
-152. Detect order-item rows where the discount exceeds gross line value.
-153. Detect duplicate customer emails, ignoring NULL.
-154. Detect duplicate SKUs.
-155. Return one summary result with:
-   - check name
-   - failure count
+## R. Data Quality — Orders
 
-   for at least 8 quality checks using `UNION ALL`.
+171. Missing/blank source order keys.
+172. Malformed order IDs.
+173. Malformed customer IDs, excluding NULL guest customers.
+174. Malformed store IDs.
+175. Malformed order dates.
+176. Future-dated orders using `@as_of_date = '2026-08-15'`.
+177. Invalid status values.
+178. Invalid sales channels.
+179. Orphan customers.
+180. Orphan stores.
+181. Unsupported `change_type_raw`.
+182. Produce a single order-quality summary using `UNION ALL`.
 
-## Set 2I — Grain, keys, and constraints
+## S. Data Quality — Order Items
 
-156. State the grain of every core table.
-157. Identify the primary key of every core table.
-158. Explain why `order_items` needs a composite key.
-159. Explain why `(store_id, product_id, snapshot_date)` is a sensible key for `inventory_snapshots`.
-160. Identify every foreign-key relationship in the practice schema.
-161. Give an example of an orphaned order-item record.
-162. Explain the difference between a natural key and surrogate key.
-163. Identify a plausible natural key for `products`.
-164. Explain why an order-level measure should not be stored on an order-item grain without care.
+183. Missing line number.
+184. Malformed line number.
+185. Zero quantity.
+186. Negative quantity.
+187. Malformed quantity.
+188. Negative unit price.
+189. Malformed unit price.
+190. Negative discount.
+191. Discount greater than gross line value.
+192. Orphan products.
+193. Orphan source orders.
+194. Duplicate composite `(order,line)` keys.
+195. Produce an item-quality summary.
 
-## Set 2J — DDL and constraints
+## T. Data Quality — Products / Customers / Inventory
 
-165. Create a schema named `warehouse`.
-166. Create `warehouse.dim_store` with a surrogate identity key.
-167. Create `warehouse.dim_product` with:
-   - surrogate key
-   - source product ID
-   - SKU
-   - product name
-   - category
-   - current cost
-   - current list price.
-168. Create `warehouse.fact_sales` at one row per order line.
-169. Add appropriate primary keys.
-170. Add foreign keys to the fact table.
-171. Add `NOT NULL` constraints to required columns.
-172. Add a `CHECK (quantity > 0)` constraint.
-173. Add a `CHECK (unit_price >= 0)` constraint.
-174. Add a `DEFAULT` constraint for a load timestamp.
-175. Create a unique constraint on SKU where appropriate.
-176. Alter a table to add `load_batch_id BIGINT`.
-177. Explain when you would use `TRUNCATE TABLE` instead of `DELETE`.
+196. Duplicate incoming SKUs.
+197. Negative product cost.
+198. Negative product price.
+199. Product cost greater than list price.
+200. Malformed product cost.
+201. Missing product business key.
+202. Duplicate incoming customer emails ignoring NULL/blank.
+203. Invalid customer provinces.
+204. Invalid loyalty tiers.
+205. Malformed customer signup dates.
+206. Negative incoming inventory quantity.
+207. Malformed incoming inventory quantity.
+208. Negative reorder point.
+209. Orphan inventory store/product references.
+210. Duplicate inventory snapshots.
+211. Build a cross-entity quality-check summary with at least 15 checks.
 
-## Set 2K — DML
+## U. Grain / Keys / Relational Design
 
-178. Insert one new store.
-179. Insert multiple new products in one statement.
-180. Insert rows into a clean staging table using `INSERT ... SELECT`.
-181. Increase `reorder_point` by 5 for a supplied category.
-182. Set inactive products to `active_flag = 0` based on a supplied list.
-183. Delete staging rows older than a supplied retention date.
-184. Wrap a dangerous `UPDATE` in a transaction, inspect the affected rows, then roll it back.
-185. Write an `UPDATE` that uses a join.
-186. Write a `DELETE` that uses a join or `EXISTS`.
+212. State the grain of every `retail.*` table.
+213. State the grain of every `staging.*_incoming` table.
+214. Identify all primary keys.
+215. Explain why `retail.order_items` has a composite key.
+216. Explain why inventory uses `(store_id, product_id, snapshot_date)`.
+217. Identify foreign-key relationships in the clean model.
+218. Explain why raw incoming tables intentionally do not enforce those foreign keys.
+219. Explain natural versus surrogate keys using `sku` and a future `product_key`.
+220. Explain why fact-table grain must be defined before choosing measures.
+
+## V. DDL — Executable
+
+Perform these in a new schema called `practice_dw`.
+
+221. `CREATE SCHEMA practice_dw`.
+222. Create `practice_dw.dim_store` with an `IDENTITY` surrogate key.
+223. Create `practice_dw.dim_product`.
+224. Create `practice_dw.dim_customer`.
+225. Create `practice_dw.dim_date`.
+226. Create `practice_dw.fact_sales` at one row per order line.
+227. Add appropriate primary keys.
+228. Add foreign keys from fact to dimensions.
+229. Add `NOT NULL` constraints where appropriate.
+230. Add `CHECK (quantity > 0)`.
+231. Add `CHECK (unit_price >= 0)`.
+232. Add a default load timestamp.
+233. Add a unique constraint on a natural/business key where appropriate.
+234. `ALTER TABLE` to add `load_batch_id BIGINT`.
+235. Create a nonclustered index supporting store/date fact lookups.
+236. Create a view exposing a simple sales mart.
+237. Create and then drop a disposable practice table.
+238. Demonstrate `TRUNCATE TABLE` safely on a disposable table and explain `DELETE` vs `TRUNCATE` vs `DROP`.
+
+## W. DML — Executable
+
+Use only disposable/practice tables where destructive changes would affect seeded data.
+
+239. Insert one dimension row.
+240. Insert multiple dimension rows.
+241. Populate a dimension with `INSERT ... SELECT`.
+242. Update dimension attributes from a staging-derived dataset.
+243. Delete a deliberately inserted test row.
+244. Perform an `UPDATE` using a join.
+245. Perform a `DELETE` using `EXISTS`.
+246. Wrap an update in a transaction, inspect the result, then roll back.
+247. Insert only valid, deduplicated incoming orders into a clean practice table.
+248. Insert rejected rows into a reject table with `rejection_reason`.
+249. Update a clean practice target when a newer source version exists.
+250. Insert source business keys not already in the target.
 
 ## Day 2 Capstone
 
-187. Build a T-SQL script that processes `staging.orders_incoming` into a hypothetical `staging.orders_clean` table:
+251. Build an executable pipeline from `staging.orders_incoming` and `staging.order_items_incoming` into practice clean tables:
 
-1. Flag invalid records.
-2. Separate rejected records.
-3. Deduplicate valid records using latest `modified_at`.
-4. Retain the winning record per `source_order_id`.
-5. Load only the valid winners.
-6. Produce a run summary with counts for:
-   - rows read
-   - invalid rows
-   - duplicate/superseded rows
-   - clean winners loaded.
-7. Ensure your logic has an explicit and defensible grain.
+- exclude replayed files
+- safely type-convert raw fields
+- validate business rules
+- quarantine invalid rows
+- deduplicate valid source versions deterministically
+- resolve customer/store/product references
+- preserve guest orders
+- load clean winners
+- calculate read/rejected/superseded/accepted counts
+- reconcile accepted order lines to accepted orders
 
 ---
 
 # DAY 3 — Think Like a Data Engineer
 
-## Set 3A — Staging → cleaned → curated
+## X. Layered Architecture
 
-188. Define the purpose of each layer:
-   - raw
-   - staging
-   - cleaned/validated
-   - curated
-   - warehouse.
-189. Design table names and grains for a retail pipeline flowing through those layers.
-190. Write a CTE-based transformation representing the layers.
-191. Explain which layer should preserve malformed source records and why.
-192. Explain where business rules such as `quantity > 0` should be enforced.
-193. Explain where derived metrics such as `net_sales` should be calculated.
+252. Define raw, staging, clean, curated, and warehouse layers using this repo.
+253. Decide which existing tables correspond most closely to each layer.
+254. Design names/grains for clean incoming-order tables.
+255. Write a CTE chain representing raw → typed → valid → deduplicated → enriched.
+256. Explain why malformed source rows must remain observable rather than silently disappearing.
 
-## Set 3B — Full vs incremental loads
+## Y. Full vs Incremental Loads
 
-194. Define a full load.
-195. Define an incremental load.
-196. Give two cases where a full load may be acceptable.
-197. Give three reasons incremental loads are preferred for large retail history.
-198. Write a query that selects only rows modified after `@last_successful_load`.
-199. Explain the danger of using `>` when two records can share the same watermark timestamp.
-200. Design a compound watermark using timestamp plus source ID.
-201. Write a query that loads a bounded window with `@lower_bound` and `@upper_bound`.
+257. Define full load and incremental load.
+258. Give two reasonable full-load use cases.
+259. Give three reasons incremental loads matter for large retail history.
+260. Select rows ingested after `@last_successful_ingestion`.
+261. Select rows modified after `@last_successful_modified`.
+262. Compare ingestion-time and source-modification-time watermarks using the seeded late-arriving order.
+263. Explain which watermark would miss the late arrival and why.
+264. Implement a bounded incremental window.
+265. Design a lookback-window strategy for late data.
 
-## Set 3C — Watermarks
+## Z. Watermarks / Control Tables
 
-202. Design a `control.pipeline_watermark` table.
-203. Store:
-   - pipeline name
-   - last successful timestamp
-   - last successful source ID
-   - updated timestamp.
-204. Write a query that reads the current watermark.
-205. Write a query that calculates the next high watermark from source data.
-206. Explain why the watermark should normally advance only after a successful load.
-207. Describe what happens if the pipeline crashes after target rows are loaded but before the watermark updates.
+266. Create `practice_dw.pipeline_watermark`.
+267. Store pipeline name, last ingestion watermark, source watermark, last business key, and update timestamp.
+268. Insert an initial watermark.
+269. Read it into variables.
+270. Calculate a candidate high watermark.
+271. Update the watermark only after successful target work.
+272. Explain crash behavior if target commit succeeds but watermark update does not.
 
-## Set 3D — Upserts
+## AA. Upserts
 
-208. Given a staging table and target `retail.products`, classify source rows as:
-   - insert
-   - update
-   - unchanged.
-209. Write the classification query.
-210. Write an `UPDATE` for changed products.
-211. Write an `INSERT` for new products.
-212. Explain how this two-statement approach can be made transactional.
-213. Write a conceptual `MERGE` statement performing the same upsert.
-214. Add logic for a source record representing a deletion/inactivation.
-215. Explain what business key you would use to match products.
+273. Classify incoming products as `INSERT`, `UPDATE`, `UNCHANGED`, `DELETE`, or `INVALID`.
+274. Implement changed-product updates in a practice target.
+275. Insert new valid products.
+276. Apply delete/tombstone logic as soft deactivation.
+277. Wrap the update/insert/deactivate sequence in a transaction.
+278. Write a conceptual `MERGE` version.
+279. Explain why production SQL Server teams may prefer explicit `UPDATE` + `INSERT` patterns over `MERGE`.
 
-## Set 3E — Idempotency
+## AB. Idempotency
 
-216. Define idempotency in the context of ETL.
-217. Show how a naive `INSERT INTO target SELECT ... FROM staging` can create duplicates on rerun.
-218. Rewrite it so rerunning the same batch does not duplicate rows.
-219. Design a `load_batch_id` approach.
-220. Design a unique-key approach.
-221. Design a delete-and-reload approach for one bounded date partition.
-222. Explain which of those strategies is safest for immutable transaction facts.
-223. Explain what makes a pipeline deterministic.
+280. Demonstrate a naive duplicate-producing reload in a disposable table.
+281. Prevent duplication using a unique business key.
+282. Prevent replayed files using checksum metadata.
+283. Prevent duplicate facts using the natural source line key.
+284. Design a `load_batch_id` strategy.
+285. Implement delete-and-reload for one bounded date slice.
+286. Explain which strategy is appropriate for immutable fact rows versus mutable dimensions.
+287. Prove by rerunning your load twice that target row counts remain unchanged.
 
-## Set 3F — Transactions
+## AC. Transactions / Error Handling
 
-224. Wrap an upsert process in `BEGIN TRANSACTION`, `COMMIT`, and `ROLLBACK`.
-225. Add `TRY...CATCH`.
-226. Use `XACT_STATE()` in your error handling.
-227. Explain what happens if product updates succeed but inserts fail without a transaction.
-228. Write a transaction that:
-   - loads a batch
-   - validates its target count
-   - rolls back if the count is wrong.
-229. Explain why transactions should not necessarily be held open for extremely long ETL jobs.
+288. Wrap a multi-table load in `BEGIN TRANSACTION`.
+289. Add `TRY...CATCH`.
+290. Use `XACT_STATE()` correctly.
+291. Force a deliberate error in a disposable pipeline and prove rollback.
+292. Validate expected target row counts before commit.
+293. Explain why very large ETL transactions can be operationally expensive.
 
-## Set 3G — Fact/dimension modeling
+## AD. Dimensional Modeling
 
-230. Define a fact table.
-231. Define a dimension table.
-232. Define a star schema.
-233. Design a retail star schema for sales analysis.
-234. State the grain of `fact_sales`.
-235. Choose dimensions for:
-   - customer
-   - product
-   - store
-   - date.
-236. Identify which columns are measures.
-237. Explain why `quantity` belongs in the fact table.
-238. Explain why `product_name` normally belongs in a dimension rather than the fact.
-239. Explain why fact grain must be declared before selecting columns.
-240. Design a separate `fact_inventory_snapshot`.
-241. State its grain.
-242. Explain why inventory snapshot facts should not be blindly summed across dates.
+294. Define fact table, dimension table, and star schema.
+295. Design a retail sales star schema.
+296. State `fact_sales` grain.
+297. Identify additive measures.
+298. Explain why product/customer descriptive attributes belong in dimensions.
+299. Design `fact_inventory_snapshot`.
+300. State its grain.
+301. Explain why inventory balances are semi-additive across time.
+302. Design an `Unknown` dimension member strategy.
 
-## Set 3H — Surrogate keys
+## AE. Surrogate Keys
 
-243. Define a surrogate key.
-244. Explain why a warehouse might use `product_key` even when the source has `product_id`.
-245. Create `dim_product(product_key INT IDENTITY, source_product_id INT, ...)`.
-246. Write a fact load that looks up the product surrogate key.
-247. Decide what to do if the dimension row cannot be found.
-248. Explain the concept of an `Unknown` dimension row.
+303. Explain why `product_key` differs from source `product_id`.
+304. Populate dimension surrogate keys.
+305. Load facts by looking up customer/product/store surrogate keys.
+306. Route unresolved members to `Unknown`.
+307. Explain late-arriving dimension handling.
 
-## Set 3I — SCD Type 1 vs Type 2
+## AF. SCD Type 1 / Type 2
 
-249. Explain SCD Type 1.
-250. Explain SCD Type 2.
-251. Give one retail attribute suited to Type 1.
-252. Give one retail attribute suited to Type 2.
-253. Add these columns to a Type 2 dimension:
+308. Explain Type 1 and Type 2.
+309. Choose product attributes appropriate for each.
+310. Create an SCD2 product dimension with:
+   - surrogate key
+   - source product ID
+   - tracked attributes
    - `effective_from`
    - `effective_to`
-   - `is_current`.
-254. Detect changed product attributes between staging and current dimension rows.
-255. Expire the old current row.
-256. Insert the new current row.
-257. Ensure exactly one current row exists per source product.
-258. Query the dimension as it existed on a supplied historical date.
-259. Join historical sales to the correct Type 2 product version based on order date.
+   - `is_current`
+311. Load the baseline clean products.
+312. Detect seeded incoming changes for product 114.
+313. Expire the old current row.
+314. Insert the new version.
+315. Enforce/logically verify one current row per source product.
+316. Query product 114 historically as of two supplied dates.
+317. Join historical sales to the correct product version by order date.
 
-## Set 3J — Index basics
+## AG. Indexes
 
-260. Explain the difference between a heap and clustered index.
-261. Explain clustered vs nonclustered indexes.
-262. Choose an index for frequent lookups of `orders` by `order_id`.
-263. Choose an index for queries filtering by `order_date`.
-264. Choose an index for queries filtering by `store_id` and date range.
-265. Design a composite index and justify column order.
-266. Explain a covering index.
-267. Propose included columns for a common store-sales query.
-268. Explain why "index every column" is a bad strategy.
+318. Explain heap vs clustered index.
+319. Explain clustered vs nonclustered index.
+320. Propose an index for order-date filtering.
+321. Propose a composite store/date index.
+322. Explain key column order.
+323. Explain covering indexes and included columns.
+324. Explain write overhead caused by excessive indexes.
 
-## Set 3K — SARGability
+## AH. SARGability
 
-For each pair, identify the more SARGable form and explain why.
+325. Rewrite `YEAR(order_date) = 2026` as a SARGable range.
+326. Rewrite a predicate that applies `ISNULL` to the indexed column.
+327. Rewrite a date equality test against `DATETIME2` as a half-open range.
+328. Explain leading-wildcard search limitations.
+329. Show why converting the column side of a predicate can inhibit efficient access.
 
-269. `YEAR(order_date) = 2026` versus a date range.
-270. `UPPER(status) = 'COMPLETED'` versus storing/normalizing comparable values.
-271. `ISNULL(customer_id, 0) = 42` versus `customer_id = 42`.
-272. Rewrite a query that casts the indexed column in the `WHERE` clause.
-273. Rewrite a date filter using an inclusive lower bound and exclusive upper bound.
-274. Explain why `%wireless%` is generally harder to seek efficiently than `wireless%`.
+## AI. Execution Plans
 
-## Set 3L — Execution-plan basics
+330. Explain seek, scan, and table scan.
+331. Explain nested loops, hash join, and merge join.
+332. Explain sort and key lookup operators.
+333. Inspect an actual execution plan for a supplied sales query.
+334. Add an index and compare the before/after plan.
+335. Explain estimated vs actual plans.
+336. Explain why scans are not automatically bad.
 
-275. Explain index seek.
-276. Explain index scan.
-277. Explain table scan.
-278. Explain nested loops join.
-279. Explain hash join.
-280. Explain merge join.
-281. Explain sort operators.
-282. Explain key lookups.
-283. Given a query that scans millions of order rows for one day of data, list three things you would inspect.
-284. Compare estimated versus actual execution plans conceptually.
-285. Explain why an execution plan is evidence rather than a command to "always avoid scans."
+## AJ. Partitioning / Clustering Concepts
 
-## Set 3M — Partitioning / clustering concepts
+337. Define partitioning.
+338. Define partition elimination.
+339. Choose a partition key for a multi-billion-row sales fact.
+340. Explain why small tables do not automatically benefit.
+341. Explain retention advantages of date partitioning.
+342. Contrast SQL Server partitioning/indexing conceptually with cloud-warehouse clustering.
 
-286. Define table partitioning.
-287. Explain partition elimination.
-288. Propose a partitioning column for a very large sales fact table.
-289. Explain why partitioning every small table is unnecessary.
-290. Explain how date partitioning can help retention/deletion operations.
-291. Explain the conceptual difference between SQL Server indexing/partitioning and cloud-warehouse "clustering".
-292. For a 5-billion-row fact table, explain why physical data organization matters.
+## AK. Failure Scenarios
 
-## Set 3N — ETL failure scenarios
+For each: explain detection, desired behavior, recovery, and relevant SQL mechanisms.
 
-For each scenario, describe:
-1. detection,
-2. desired behavior,
-3. recovery strategy,
-4. SQL mechanisms involved.
+343. Exact source file arrives twice.
+344. Duplicate business keys exist within one file.
+345. Pipeline fails halfway through multi-table writes.
+346. Source adds a nullable column.
+347. Numeric source field starts containing text.
+348. Order arrives 11 days late.
+349. Existing product is corrected.
+350. Source sends a deletion/tombstone.
+351. Fact arrives before its dimension member.
+352. Newer source version arrives after an older one is loaded.
+353. Row counts reconcile but revenue does not.
+354. Database becomes unavailable after raw staging succeeds.
+355. Retry starts after only part of prior work committed.
 
-293. The source sends the same file twice.
-294. The source sends duplicate business keys in one file.
-295. The pipeline fails halfway through target inserts.
-296. A source table adds a new nullable column.
-297. A source column changes from integer-like strings to malformed text.
-298. Yesterday's orders arrive two days late.
-299. A previously loaded product is corrected.
-300. A source deletes a product.
-301. A fact references a dimension member that has not arrived yet.
-302. The same record arrives with a newer `modified_at`.
-303. A batch has the expected row count but wrong revenue totals.
-304. The database becomes unavailable after staging succeeds.
-305. A retry begins after some—but not all—target changes committed.
+## Day 3 Capstone — End-to-End Incremental Retail Load
 
-## Day 3 Capstone — End-to-End Retail Incremental Load
+356. Build an end-to-end T-SQL design using the provided raw sources. Your implementation must include:
 
-306. Design and write the core T-SQL for this pipeline:
-
-**Source:** `staging.orders_incoming`  
-**Target:** curated order tables / warehouse sales fact
-
-Required behavior:
-
-1. Read the previous watermark.
-2. Select only the eligible incremental source window.
-3. Validate technical and business rules.
-4. Quarantine invalid records.
-5. Deduplicate valid source versions.
-6. Resolve foreign keys.
-7. Classify records as inserts/updates/unchanged.
-8. Apply changes transactionally.
-9. Prevent duplicate results on rerun.
-10. Update the watermark only after success.
-11. Write an audit row containing:
-    - run ID
-    - start/end timestamps
-    - rows read
-    - rows rejected
-    - rows inserted
-    - rows updated
-    - rows unchanged
-    - status.
-12. Roll back appropriately on failure.
-13. Produce a reconciliation:
-    - source eligible count
-    - accepted count
-    - rejected count
-    - target count impact.
-14. Explain how late-arriving records are handled.
-15. Explain how the design would change for billions of historical rows.
+1. ingestion/file replay detection
+2. incremental window selection
+3. safe type conversion
+4. technical validation
+5. business validation
+6. reject/quarantine storage
+7. deterministic deduplication
+8. foreign-key/dimension resolution
+9. insert/update/delete classification
+10. transaction-safe target application
+11. idempotent reruns
+12. watermark advancement only after success
+13. audit/run metrics
+14. row-count reconciliation
+15. revenue reconciliation
+16. late-arriving-data strategy
+17. rollback/error behavior
+18. explanation of how the design changes at billion-row scale
 
 ---
 
 # FINAL MIXED INTERVIEW SET
 
-Do these without notes.
+Do these without looking at section headings or prior solutions.
 
-307. What is the grain of an order-item table?
-308. Why can a join increase row count?
-309. Write net sales by store.
-310. Find customers with no orders.
-311. Return each customer's latest order.
-312. Deduplicate incoming orders by latest modification timestamp.
-313. Detect orphaned product references.
-314. Explain `WHERE` versus `HAVING`.
-315. Explain `ROW_NUMBER` versus `RANK`.
-316. Explain `UNION` versus `UNION ALL`.
-317. Write a running sales total.
-318. Design an incremental-load watermark.
-319. Explain idempotency.
-320. Design an upsert.
-321. Explain why transactions matter during an ETL load.
-322. Explain Type 1 versus Type 2 dimensions.
-323. State the grain of a sales fact table.
-324. Explain surrogate keys.
-325. Rewrite a non-SARGable date predicate.
-326. Explain clustered versus nonclustered indexes.
-327. What would you inspect when a query is unexpectedly slow?
-328. How would you handle late-arriving data?
-329. How would you prevent a duplicated source file from duplicating warehouse facts?
-330. The pipeline succeeded but revenue totals differ from source totals. What do you do?
-331. Sketch a complete retail pipeline from source to trusted analytical tables.
+357. State the grain of `retail.order_items`.
+358. Why can a join increase row count?
+359. Write completed net sales by store.
+360. Find customers with no orders.
+361. Return each customer's latest order.
+362. Deduplicate incoming orders deterministically.
+363. Detect orphan incoming product references.
+364. Explain `WHERE` vs `HAVING`.
+365. Explain `ROW_NUMBER` vs `RANK` vs `DENSE_RANK`.
+366. Explain `UNION` vs `UNION ALL`.
+367. Write a running sales total.
+368. Explain why `TRY_CONVERT` matters in raw ingestion.
+369. Detect duplicate source-file replay.
+370. Design an incremental watermark.
+371. Explain how the seeded late-arriving order challenges a source-modification watermark.
+372. Explain idempotency.
+373. Design an upsert.
+374. Explain transaction boundaries in ETL.
+375. Explain SCD Type 1 vs Type 2.
+376. State the grain of a sales fact.
+377. Explain surrogate keys.
+378. Rewrite a non-SARGable date predicate.
+379. Explain clustered vs nonclustered indexes.
+380. What do you inspect when a query is unexpectedly slow?
+381. How do you handle a fact whose dimension member has not arrived?
+382. How do you prevent a replayed source file from duplicating target facts?
+383. Counts reconcile but revenue does not. What do you inspect?
+384. Sketch source → raw → validated → deduplicated → curated → warehouse.
+385. Explain why the clean operational tables and dirty raw tables deliberately have different constraint strategies.
 
 ---
 
-# Suggested 3-Day Execution Order
+# Three-Day Priority Path
 
-## Day 1 must-do
-1–61, 67–74, 83.
+The complete bank is for mastery. For a three-day sprint, prioritize:
 
-## Day 1 stretch
-62–66, 75–82.
+**Day 1:** 1–73 and 97  
+**Day 2:** 98–195, 211–251  
+**Day 3:** 252–336, 343–356  
+**Final:** 357–385 timed
 
-## Day 2 must-do
-84–140, 155–187.
+Stretch sections can be completed afterward.
 
-## Day 2 stretch
-141–154 if your data-quality reasoning is already strong.
+# Mastery Standard
 
-## Day 3 must-do
-188–228, 230–259, 260–285, 293–306.
+For coding questions, do not mark a problem complete unless you can:
 
-## Day 3 stretch
-286–292.
-
-## Final
-307–331 under timed conditions.
-
-# Mastery rule
-
-For coding questions, do not count a problem as mastered unless you can:
-1. write the query without looking up the pattern,
-2. state the output grain,
-3. explain why joins do not duplicate the intended measure,
-4. identify important NULL behavior,
-5. explain at least one plausible edge case.
-
-For conceptual questions, require a 30–60 second spoken explanation plus one concrete retail example.
+- produce a correct executable query,
+- state its output grain,
+- explain duplicate/cardinality risk,
+- explain NULL/malformed-value behavior,
+- identify at least one edge case,
+- and defend the approach verbally.
