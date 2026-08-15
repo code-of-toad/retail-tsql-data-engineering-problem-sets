@@ -5,7 +5,7 @@ DAY 1 REFERENCE SOLUTIONS — Core Querying + Joins
 Dialect: Microsoft T-SQL for SQL Server
 Database: RetailDEPractice
 
-This file is the companion answer key for day01_starter_fixed.sql.
+This file is the companion answer key for day01_problem_set_starter.sql.
 It contains the exact same 97 problem prompts in the exact same order.
 
 IMPORTANT
